@@ -76,7 +76,7 @@ Ride dispatch operations require a centralized, machine-readable API to create, 
 ### Assumptions
 
 - The `User` model is the system's user entity (it may or may not extend Django's built-in `AbstractUser`; the engineer decides based on the field set specified).
-- `id_rider` and `id_driver` on the `Ride` model are both foreign keys to the same `User` model.
+- `id_rider` and `id_driver` on the `Ride` model are both foreign keys to the same `User` model. Riders have `role='rider'` and drivers have `role='driver'`; a single user cannot serve as both on the same ride.
 - "Last 24 hours" for `todays_ride_events` is computed relative to the server's current UTC timestamp at request time.
 - Distance-based sorting uses a Euclidean approximation or equivalent in-database computation against the pickup coordinates (`pickup_latitude`, `pickup_longitude`); haversine accuracy is not mandated unless the engineer deems it necessary.
 - Admin role is determined solely by the `role` field on the `User` model (value: `'admin'`); Django's built-in `is_staff` or `is_superuser` flags are not required to align with this role.
@@ -115,7 +115,7 @@ Ride dispatch operations require a centralized, machine-readable API to create, 
 
 ### User Model & Endpoints
 
-- **FR-004**: The system shall persist `User` records with the following fields: `id_user` (primary key), `role` (VARCHAR, values restricted to `'admin'` and at minimum one non-admin value), `first_name`, `last_name`, `email`, `phone_number`.
+- **FR-004**: The system shall persist `User` records with the following fields: `id_user` (primary key), `role` (VARCHAR, values restricted to `'admin'`, `'rider'`, and `'driver'`), `first_name`, `last_name`, `email`, `phone_number`.
 - **FR-005**: The system shall expose a `User` list endpoint that returns all users in paginated form.
 - **FR-006**: The system shall expose a `User` detail endpoint that returns a single user by primary key.
 - **FR-007**: The system shall expose a `User` create endpoint that persists a new user record and returns the created object with HTTP 201.
@@ -199,7 +199,7 @@ Ride dispatch operations require a centralized, machine-readable API to create, 
 ## Business Rules
 
 - **BR-001**: A `Ride.status` field must only ever contain one of three values: `'en-route'`, `'pickup'`, or `'dropoff'`. Any other value must be rejected at the API layer before persistence.
-- **BR-002**: A `User.role` field must only contain `'admin'` or a defined non-admin role value. The system must enforce this as a choice constraint.
+- **BR-002**: A `User.role` field must only contain one of three values: `'admin'`, `'rider'`, or `'driver'`. The system must enforce this as a choice constraint at the API layer.
 - **BR-003**: Both `id_rider` and `id_driver` on a Ride must reference records in the `User` table. A Ride cannot be created or updated to reference a non-existent User.
 - **BR-004**: A `RideEvent` must always be linked to an existing `Ride`. A RideEvent cannot be created without a valid `id_ride` reference.
 - **BR-005**: The "last 24 hours" window for `todays_ride_events` is always calculated as `NOW() - 24 hours` in UTC at query execution time. It is not calendar-day scoped (i.e., it is not "since midnight today").
@@ -279,7 +279,7 @@ Ride dispatch operations require a centralized, machine-readable API to create, 
 | Field | Type | Constraints |
 |---|---|---|
 | `id_user` | Integer / UUID | Primary Key, auto-generated |
-| `role` | VARCHAR | Choices: `'admin'`, `[non-admin role]` |
+| `role` | VARCHAR | Choices: `'admin'`, `'rider'`, `'driver'` |
 | `first_name` | VARCHAR | Required |
 | `last_name` | VARCHAR | Required |
 | `email` | VARCHAR | Required, unique |
@@ -361,7 +361,7 @@ Ride dispatch operations require a centralized, machine-readable API to create, 
 
 1. **Dropoff time field**: The bonus SQL query (FR-034) requires computing pickup-to-dropoff duration greater than 1 hour. However, the `Ride` model specification does not include a `dropoff_time` field. Does the system need to add a `dropoff_time` field to the `Ride` model, or is this duration to be derived from RideEvent timestamps (e.g., the timestamp of the last event with status-related description)? This must be resolved before schema design begins.
 
-2. **Non-admin role value**: The `User.role` field is described as `'admin'` or "other." What is the canonical string value for the non-admin role (e.g., `'rider'`, `'driver'`, `'user'`, `'passenger'`)? If riders and drivers are separate roles, should the `role` field use a multi-value or separate boolean approach?
+2. ~~**Non-admin role value**~~ **RESOLVED**: The `User.role` field uses three distinct values: `'admin'`, `'rider'`, and `'driver'`. Riders and drivers are separate roles. A user cannot simultaneously be a rider and a driver.
 
 3. **Conflict resolution for simultaneous sort parameters**: What should the system do if a caller supplies both `?lat=X&lon=Y` (distance sort) and a pickup-time sort parameter simultaneously? Options: (a) distance sort takes precedence silently, (b) pickup-time sort takes precedence silently, (c) return HTTP 400 requiring the caller to choose one. A deterministic rule is required (see BR-007).
 

@@ -2,7 +2,8 @@
 
 Creates:
   - 2 admin users
-  - 3 rider/driver users
+  - 3 rider users
+  - 3 driver users
   - 10 rides, each with lifecycle events (some within the last 24h, some older)
 
 Idempotent: running it repeatedly resets the rides/users it manages.
@@ -41,7 +42,7 @@ ADMINS = [
     },
 ]
 
-PEOPLE = [
+RIDERS = [
     {
         "email": "john@wingz.dev",
         "first_name": "John",
@@ -59,6 +60,27 @@ PEOPLE = [
         "first_name": "Bob",
         "last_name": "Carter",
         "phone_number": "+14155550003",
+    },
+]
+
+DRIVERS = [
+    {
+        "email": "driver1@wingz.dev",
+        "first_name": "Chris",
+        "last_name": "Howard",
+        "phone_number": "+14155550004",
+    },
+    {
+        "email": "driver2@wingz.dev",
+        "first_name": "Randy",
+        "last_name": "Wilson",
+        "phone_number": "+14155550005",
+    },
+    {
+        "email": "driver3@wingz.dev",
+        "first_name": "Howard",
+        "last_name": "Young",
+        "phone_number": "+14155550006",
     },
 ]
 
@@ -93,12 +115,13 @@ class Command(BaseCommand):
         self._reset()
 
         admins = [self._create_user(role="admin", **a) for a in ADMINS]
-        people = [self._create_user(role="rider", **p) for p in PEOPLE]
+        riders = [self._create_user(role="rider", **r) for r in RIDERS]
+        drivers = [self._create_user(role="driver", **d) for d in DRIVERS]
 
         now = timezone.now()
         for i in range(ride_count):
-            rider = people[i % len(people)]
-            driver = people[(i + 1) % len(people)]
+            rider = riders[i % len(riders)]
+            driver = drivers[i % len(drivers)]
             pickup_lat, pickup_lon = PICKUP_COORDS[i % len(PICKUP_COORDS)]
             ride = Ride.objects.create(
                 status=STATUSES[i % len(STATUSES)],
@@ -121,7 +144,7 @@ class Command(BaseCommand):
         )
         self.stdout.write(f"  Admin token : {token.key}")
         self.stdout.write(
-            f"  Users: {len(admins)} admins, {len(people)} riders/drivers"
+            f"  Users: {len(admins)} admins, {len(riders)} riders, {len(drivers)} drivers"
         )
         self.stdout.write(f"  Rides: {ride_count}")
 
@@ -129,7 +152,7 @@ class Command(BaseCommand):
 
     def _reset(self):
         """Remove previously seeded data so the command is idempotent."""
-        managed_emails = [u["email"] for u in ADMINS + PEOPLE]
+        managed_emails = [u["email"] for u in ADMINS + RIDERS + DRIVERS]
         # RideEvents and Rides cascade/clear before users (PROTECT on users).
         Ride.objects.filter(id_rider__email__in=managed_emails).delete()
         User.objects.filter(email__in=managed_emails).delete()

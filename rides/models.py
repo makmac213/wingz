@@ -30,14 +30,12 @@ class UserManager(BaseUserManager):
 
 
 class User(AbstractBaseUser):
-    """A Wingz user. A driver is simply a ``rider``-role user assigned as the
-    driver on a ride; ``role`` describes operational identity (admin vs. not),
-    not trip assignment. See TSD-2026-001 Assumption #2.
-    """
+    """A Wingz user with a domain role: admin, rider, or driver."""
 
     ROLE_CHOICES = [
         ("admin", "Admin"),
         ("rider", "Rider"),
+        ("driver", "Driver"),
     ]
 
     id_user = models.AutoField(primary_key=True)

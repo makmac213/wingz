@@ -22,6 +22,7 @@ def _make_request(user):
     [
         ("admin", True),
         ("rider", False),
+        ("driver", False),
         (None, False),
         ("", False),
     ],

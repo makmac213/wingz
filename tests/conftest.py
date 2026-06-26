@@ -44,7 +44,7 @@ def driver_user(db):
     return User.objects.create_user(
         email="driver@test.com",
         password="driver123",
-        role="rider",
+        role="driver",
         first_name="Driver",
         last_name="One",
         phone_number="+10000000003",

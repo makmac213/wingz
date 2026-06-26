@@ -15,7 +15,7 @@ The following open questions from the BRD are resolved here before design begins
 | # | Question | Resolution |
 |---|---|---|
 | 1 | Dropoff time for bonus SQL | Duration computed from RideEvent timestamps where description = `'Status changed to pickup'` and `'Status changed to dropoff'`. No `dropoff_time` field added to `Ride`. |
-| 2 | Non-admin role value | The role field uses choices `'admin'` and `'rider'`. A driver is also a `'rider'`-role user — role describes operational identity, not trip assignment. |
+| 2 | Non-admin role value | The role field uses three choices: `'admin'`, `'rider'`, and `'driver'`. Riders and drivers are distinct roles. A user assigned as `id_driver` on a Ride must have `role='driver'`; a user assigned as `id_rider` must have `role='rider'`. |
 | 3 | Simultaneous sort parameters | Distance sort (`lat`/`lon`) takes precedence silently over pickup-time sort. If only pickup-time sort is specified, it is used. Default is pickup-time ascending. |
 | 4 | Default sort order | `pickup_time` ascending when no sort parameter is supplied. |
 | 5 | Authentication mechanism | DRF Token Authentication (`rest_framework.authtoken`). Chosen over JWT for simplicity — no refresh-token complexity, easy to layer JWT on later via `djangorestframework-simplejwt`. |
@@ -192,7 +192,7 @@ The `Prefetch` with `to_attr='todays_ride_events'` stores filtered events on eac
 ```sql
 CREATE TABLE rides_user (
     id_user        INTEGER PRIMARY KEY AUTOINCREMENT,  -- SERIAL in PostgreSQL
-    role           VARCHAR(20) NOT NULL,               -- CHECK (role IN ('admin','rider'))
+    role           VARCHAR(20) NOT NULL,               -- CHECK (role IN ('admin','rider','driver'))
     first_name     VARCHAR(150) NOT NULL,
     last_name      VARCHAR(150) NOT NULL,
     email          VARCHAR(254) NOT NULL UNIQUE,
@@ -281,7 +281,7 @@ class UserManager(BaseUserManager):
 
 
 class User(AbstractBaseUser):
-    ROLE_CHOICES = [('admin', 'Admin'), ('rider', 'Rider')]
+    ROLE_CHOICES = [('admin', 'Admin'), ('rider', 'Rider'), ('driver', 'Driver')]
 
     id_user      = models.AutoField(primary_key=True)
     role         = models.CharField(max_length=20, choices=ROLE_CHOICES)
@@ -471,7 +471,7 @@ Note: `password` is write-only; never returned in responses.
   },
   "id_driver": {
     "id_user": 8,
-    "role": "rider",
+    "role": "driver",
     "first_name": "Alice",
     "last_name": "Brown",
     "email": "alice@example.com",
