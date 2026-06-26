@@ -26,6 +26,37 @@ def test_user_serializer_invalid_role():
     assert "role" in serializer.errors
 
 
+@pytest.mark.django_db
+def test_user_serializer_phone_number_required():
+    """BRD FR-004: phone_number omitted from payload must fail validation."""
+    serializer = UserSerializer(
+        data={
+            "role": "rider",
+            "first_name": "A",
+            "last_name": "B",
+            "email": "c@d.com",
+        }
+    )
+    assert not serializer.is_valid()
+    assert "phone_number" in serializer.errors
+
+
+@pytest.mark.django_db
+def test_user_serializer_phone_number_blank_rejected():
+    """BRD FR-004: empty-string phone_number must fail validation."""
+    serializer = UserSerializer(
+        data={
+            "role": "rider",
+            "first_name": "A",
+            "last_name": "B",
+            "email": "e@f.com",
+            "phone_number": "",
+        }
+    )
+    assert not serializer.is_valid()
+    assert "phone_number" in serializer.errors
+
+
 @pytest.mark.parametrize(
     "field,value,valid",
     [

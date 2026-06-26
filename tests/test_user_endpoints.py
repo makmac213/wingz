@@ -103,3 +103,36 @@ def test_list_users_paginated(authenticated_client, admin_user):
     for key in ("count", "next", "previous", "results"):
         assert key in response.data
     assert all("password" not in u for u in response.data["results"])
+
+
+@pytest.mark.django_db
+def test_create_user_missing_phone_number_returns_400(authenticated_client):
+    """BRD FR-004: phone_number is required; omitting it must return 400."""
+    payload = {
+        "role": "rider",
+        "first_name": "No",
+        "last_name": "Phone",
+        "email": "nophone@test.com",
+    }
+    response = authenticated_client.post(
+        "/api/v1/users/", payload, format="json"
+    )
+    assert response.status_code == 400
+    assert "phone_number" in response.data
+
+
+@pytest.mark.django_db
+def test_create_user_blank_phone_number_returns_400(authenticated_client):
+    """BRD FR-004: phone_number must not be blank; empty string must return 400."""
+    payload = {
+        "role": "rider",
+        "first_name": "Blank",
+        "last_name": "Phone",
+        "email": "blankphone@test.com",
+        "phone_number": "",
+    }
+    response = authenticated_client.post(
+        "/api/v1/users/", payload, format="json"
+    )
+    assert response.status_code == 400
+    assert "phone_number" in response.data

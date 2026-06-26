@@ -21,6 +21,9 @@ class UserSerializer(serializers.ModelSerializer):
             "phone_number",
             "password",
         ]
+        extra_kwargs = {
+            "phone_number": {"required": True, "allow_blank": False},
+        }
 
     def validate_role(self, value):
         valid_roles = [r[0] for r in User.ROLE_CHOICES]
