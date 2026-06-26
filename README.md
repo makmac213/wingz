@@ -1,33 +1,58 @@
 # Wingz Ride Management API
 
-A production-quality Django REST Framework API for managing ride lifecycle data
-— Users (riders and drivers), Rides, and RideEvents. Access is admin-only,
-enforced globally via DRF Token Authentication and a custom `IsAdminRole`
-permission. The Ride list endpoint delivers paginated, filterable,
-multi-mode-sortable results with embedded related objects in a fixed query
-budget (COUNT + data + prefetch = 3 queries) regardless of page size.
+## Docker Setup (Recommended for Demo)
 
-References: `docs/BRD.md`, `docs/techsolution.md`, `docs/implementation.md`,
-`docs/test_plans.md`.
+Spins up the API + PostgreSQL with a single command. No Python install needed.
+
+**Prerequisites:** Docker Desktop with Compose v2.
+
+```bash
+# 1. Copy the Docker env file
+cp .env.docker .env.docker   # already provided — edit SECRET_KEY for real deployments
+
+# 2. Build and start all services
+docker compose up --build
+
+# 3. The API is available at http://localhost:8000/api/v1/
+#    Migrations and seed data run automatically on first boot.
+```
+
+`seed_data` creates two admin users. Grab a token:
+
+```bash
+curl -s -X POST http://localhost:8000/api/v1/auth/token/ \
+  -H "Content-Type: application/json" \
+  -d '{"username": "admin@wingz.dev", "password": "admin123"}' | python3 -m json.tool
+# -> {"token": "..."}
+```
+
+Use it for all subsequent requests:
+
+```bash
+curl http://localhost:8000/api/v1/rides/ \
+  -H "Authorization: Token <token>"
+```
+
+**Run the test suite inside the container:**
+
+```bash
+docker compose exec web python -m pytest tests/ -v
+```
+
+**Stop and remove volumes:**
+
+```bash
+docker compose down -v
+```
+
+> The web service waits for PostgreSQL to pass its health check before
+> starting. An unauthenticated `GET /api/v1/rides/` returning **401** is used
+> as the web container's own health probe — it proves the server is up and auth
+> is enforced.
 
 ---
 
-## Tech Stack
-
-| Component | Choice |
-|---|---|
-| Language | Python 3.9+ (developed/tested on 3.9 and 3.11) |
-| Framework | Django 4.2 LTS |
-| API | Django REST Framework 3.14+ |
-| Auth | DRF Token Authentication (`rest_framework.authtoken`) |
-| Filtering | `django-filter` |
-| Config | `python-decouple` |
-| Dev DB | SQLite 3.38+ (trig functions required for distance sort) |
-| Tests | `pytest` + `pytest-django` |
-
----
-
-## Setup
+## Local Setup (SQLite)
 
 ```bash
 # 1. Clone and enter the project
@@ -309,6 +334,10 @@ wingz/
 ├── manage.py
 ├── requirements.txt
 ├── .env.example
+├── .env.docker            # Docker environment variables
+├── Dockerfile
+├── docker-compose.yml
+├── docker-entrypoint.sh   # Runs migrate + seed_data on container start
 ├── pytest.ini
 ├── README.md
 ├── wingz/                 # Django project config

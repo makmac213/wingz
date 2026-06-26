@@ -72,14 +72,33 @@ TEMPLATES = [
 WSGI_APPLICATION = "wingz.wsgi.application"
 
 # ---------------------------------------------------------------------------
-# Database — SQLite for development.
+# Database
 # ---------------------------------------------------------------------------
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+# When DATABASE_URL is supplied (e.g. the Docker/PostgreSQL demo environment)
+# we parse it and connect to PostgreSQL. Otherwise we fall back to the bundled
+# SQLite file so local development works with zero configuration.
+DATABASE_URL = config("DATABASE_URL", default="")
+if DATABASE_URL:
+    import urllib.parse
+
+    url = urllib.parse.urlparse(DATABASE_URL)
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": url.path[1:],
+            "USER": url.username,
+            "PASSWORD": url.password,
+            "HOST": url.hostname,
+            "PORT": url.port or 5432,
+        }
     }
-}
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+        }
+    }
 
 # ---------------------------------------------------------------------------
 # Django REST Framework
@@ -126,5 +145,7 @@ USE_TZ = True
 # Static files
 # ---------------------------------------------------------------------------
 STATIC_URL = "static/"
+# Required for `collectstatic` (run during the container build/entrypoint).
+STATIC_ROOT = BASE_DIR / "staticfiles"
 
 DEFAULT_AUTO_FIELD = "django.db.models.AutoField"
